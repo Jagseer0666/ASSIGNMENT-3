@@ -1,115 +1,98 @@
-class RequisitionSystem:
-    def __init__(self):
-        # Initialize all values
-        self.requisition_id = 10000
-        self.total_cost = 0
-        self.total_requests = 0
-        self.approved_requests = 0
-        self.not_approved_requests = 0
-        self.status = "Pending"
-        self.reference_number = "Not Available"
+def get_valid_date():
+    while True:
+        date = input("Date (dd/mm/yyyy): ")
+        parts = date.split('/')
+        if len(parts) == 3 and all(part.isdigit() for part in parts):
+            day, month, year = parts
+            if 1 <= int(day) <= 31 and 1 <= int(month) <= 12 and len(year) == 4:
+                return date
+        print("Invalid date format. Please try again.")
 
-    def staff_info(self):
-        # Get staff information
-        self.date = input("Enter the date (YYYY-MM-DD): ")
-        self.staff_id = input("Enter staff ID: ")
-        self.staff_name = input("Enter staff name: ")
-        self.requisition_id += 1  # Increase ID
-        self.total_requests += 1  # Count the request
-        self.status = "Pending"  # Reset status
-        self.reference_number = "Not Available"  # Reset reference
-        self.total_cost = 0  # Reset cost for new request
+def create_requisition(requisition_id_counter):
+    date = get_valid_date()
+    staff_id = input("Staff ID: ")
+    staff_name = input("Staff Name: ")
+    requisition_id_counter += 1
+    requisition_id = str(requisition_id_counter)
+    print(f"Requisition ID: {requisition_id}")
+    
+    return {
+        "date": date,
+        "staff_id": staff_id,
+        "staff_name": staff_name,
+        "requisition_id": requisition_id,
+        "products": [],
+        "total_price": 0,
+        "status": "",
+        "approval_ref": None
+    }, requisition_id_counter
 
-    def requisition_details(self):
-        # Add item prices
-        while True:
-            item = input("Enter item name or type 'done' to finish: ")
-            if item.lower() == "done":
-                break
-            try:
-                price = float(input("Enter item price: $"))
-                if price <= 0:
-                    print("Price must be more than 0.")
-                else:
-                    self.total_cost += price
-            except ValueError:
-                print("Please enter a valid number.")
+def add_products_to_requisition(req):
+    total = 0
+    print(f"\nRequisition ID: {req['requisition_id']} (Staff: {req['staff_name']})")
+    while True:
+        product = input("Enter product name (or 'done' to finish): ")
+        if product.lower() == "done":
+            break
+        try:
+            price = float(input(f"Enter price for {product}: $"))
+            total += price
+            req["products"].append((product, price))
+        except ValueError:
+            print("Invalid price. Skipping.")
+    req["total_price"] = total
+    print(f"Requisition total = ${total:.2f}")
 
-    def requisition_approval(self):
-        # Decide approval based on cost
-        if self.total_cost == 0:
-            print("No items added. Cannot approve.")
-            return
+def evaluate_requisition(req):
+    total = req["total_price"]
+    if total <= 500:
+        req["status"] = "Approved"
+        req["approval_ref"] = req["staff_id"] + req["requisition_id"][-3:]
+    elif total >= 501:
+        req["status"] = "Pending"
+    else:
+        req["status"] = "Not approved"
 
-        if self.total_cost < 500:
-            self.status = "Approved"
-            self.approved_requests += 1
-            self.reference_number = self.staff_id.upper() + str(self.requisition_id)[-3:]
+def print_requisition_summary(req):
+    print(f"\nRequisition ID: {req['requisition_id']}")
+    print(f"Total: ${req['total_price']:.2f} → Status: {req['status']}")
+    if req["approval_ref"]:
+        print(f"Approval Reference Number: {req['approval_ref']}")
+    else:
+        print("Approval reference number is not available.")
+
+def main():
+    requisitions = []
+    requisition_id_counter = 10000
+
+    print("\n--- Enter Staff and Requisition Info ---")
+    while True:
+        req, requisition_id_counter = create_requisition(requisition_id_counter)
+        requisitions.append(req)
+        if input("Do you want to enter another? (yes/no): ").lower() != "yes":
+            break
+
+    print("\n--- Enter Products for Each Requisition ---")
+    for req in requisitions:
+        add_products_to_requisition(req)
+
+    print("\n--- Checking Approval Status ---")
+    approved = pending = not_approved = 0
+    for req in requisitions:
+        evaluate_requisition(req)
+        print_requisition_summary(req)
+        if req["status"] == "Approved":
+            approved += 1
+        elif req["status"] == "Pending":
+            pending += 1
         else:
-            print("This request needs manual approval.")
-            response = input("Type 'approve' or 'not approve': ").lower()
-            if response == "approve":
-                self.status = "Approved"
-                self.approved_requests += 1
-                self.reference_number = self.staff_id.upper() + str(self.requisition_id)[-3:]
-            elif response == "not approve":
-                self.status = "Not Approved"
-                self.not_approved_requests += 1
-                self.reference_number = "Not Available"
-            else:
-                print("Invalid response. Status remains Pending.")
-                self.status = "Pending"
+            not_approved += 1
 
-        print("Requisition Status:", self.status)
-        print("Reference Number:", self.reference_number)
+    print("\n--- Summary Statistics ---")
+    print(f"Total Requisitions: {len(requisitions)}")
+    print(f"Approved: {approved}")
+    print(f"Pending: {pending}")
+    print(f"Not Approved: {not_approved}")
 
-    def display_requisition(self):
-        # Show requisition information
-        print("\n--- Requisition Details ---")
-        print("Date:", self.date)
-        print("Staff ID:", self.staff_id)
-        print("Staff Name:", self.staff_name)
-        print("Requisition ID:", self.requisition_id)
-        print("Total Cost: $", format(self.total_cost, ".2f"))
-        print("Status:", self.status)
-        print("Reference Number:", self.reference_number)
-
-    def requisition_statistics(self):
-        # Show totals
-        print("\n--- Requisition Statistics ---")
-        print("Total Requests:", self.total_requests)
-        print("Approved Requests:", self.approved_requests)
-        print("Not Approved Requests:", self.not_approved_requests)
-        pending = self.total_requests - self.approved_requests - self.not_approved_requests
-        print("Pending Requests:", pending)
-
-    def main_menu(self):
-        # Menu for user
-        while True:
-            print("\n--- MENU ---")
-            print("1. Enter Requisition")
-            print("2. Approve/Reject Requisition")
-            print("3. Display Requisition")
-            print("4. Show Statistics")
-            print("0. Exit")
-            choice = input("Choose an option (0-4): ")
-
-            if choice == "1":
-                self.staff_info()
-                self.requisition_details()
-            elif choice == "2":
-                self.requisition_approval()
-            elif choice == "3":
-                self.display_requisition()
-            elif choice == "4":
-                self.requisition_statistics()
-            elif choice == "0":
-                print("Goodbye!")
-                break
-            else:
-                print("Invalid choice. Please try again.")
-
-# Start the program
-if __name__ == "__main__":
-    app = RequisitionSystem()
-    app.main_menu()
+# Run the program
+main()
